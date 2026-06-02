@@ -1,0 +1,48 @@
+[includeIf "gitdir:~/Developer/personal/"]
+    path = ~/.gitconfig-personal
+
+[includeIf "gitdir:~/Developer/professional/"]
+    path = ~/.gitconfig-professional
+
+[includeIf "gitdir:~/Developer/podium/"]
+    path = ~/.gitconfig-professional
+
+[includeIf "gitdir:~/Developer/podium-github/"]
+    path = ~/.gitconfig-professional
+
+[init]
+    defaultBranch = main
+
+[merge]
+    tool = code
+    conflictstyle = zdiff3
+
+[core]
+    editor = vim
+    pager = delta
+
+[interactive]
+    diffFilter = delta --color-only
+
+[delta]
+    navigate = true
+    line-numbers = true
+    syntax-theme = Dracula
+
+[credential]
+    helper = osxkeychain
+
+[credential "https://github.com"]
+    helper =
+    helper = !gh auth git-credential
+
+[credential "https://gist.github.com"]
+    helper =
+    helper = !gh auth git-credential
+
+[alias]
+    st = status --short --branch
+    co = checkout
+    br = branch
+    ci = commit
+    lg = log --oneline --decorate --graph --all

@@ -1,0 +1,29 @@
+# Managed by ramon-git-bootstrap.
+# Keep personal and professional GitHub identities explicit.
+
+Host github.com
+    HostName ssh.github.com
+    Port 443
+    User git
+    IdentityFile ~/.ssh/id_ed25519
+    AddKeysToAgent yes
+    UseKeychain yes
+    IdentitiesOnly yes
+
+Host github.com-personal
+    HostName ssh.github.com
+    Port 443
+    User git
+    IdentityFile ~/.ssh/id_ed25519
+    AddKeysToAgent yes
+    UseKeychain yes
+    IdentitiesOnly yes
+
+Host github.com-professional
+    HostName ssh.github.com
+    Port 443
+    User git
+    IdentityFile ~/.ssh/id_ed25519_github_enterprise
+    AddKeysToAgent yes
+    UseKeychain yes
+    IdentitiesOnly yes

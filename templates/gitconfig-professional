@@ -1,0 +1,9 @@
+[user]
+    name = Ramon Ramos
+    email = ramon.ramos@podium.com
+
+[core]
+    sshCommand = ssh -i ~/.ssh/id_ed25519_github_enterprise -o IdentitiesOnly=yes -F /dev/null
+
+[format]
+    signoff = true
