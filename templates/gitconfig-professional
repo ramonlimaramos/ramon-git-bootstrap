@@ -7,3 +7,8 @@
 
 [format]
     signoff = true
+
+# Same reason as the personal scope: HTTPS remotes are rewritten to SSH so the
+# key pinned above decides the identity, not the active GitHub CLI account.
+[url "git@github.com:"]
+    insteadOf = https://github.com/
