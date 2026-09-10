@@ -7,3 +7,11 @@
 
 [github]
     user = ramonlimaramos
+
+# An HTTPS remote would authenticate through the credential helper, and that
+# helper serves whichever GitHub CLI account happens to be active — not the one
+# this directory belongs to. Rewriting to SSH sends the request through the key
+# pinned above instead, so a repository here is reachable no matter which
+# account the CLI is switched to. The stored remote URL is untouched.
+[url "git@github.com:"]
+    insteadOf = https://github.com/
