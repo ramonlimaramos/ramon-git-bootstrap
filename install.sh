@@ -6,14 +6,17 @@ BACKUP_ROOT="$HOME/.git-bootstrap-backups/$(date +%Y%m%d-%H%M%S)"
 PERSONAL_EMAIL="ramonlimaramos@gmail.com"
 PERSONAL_GH_USER="ramonlimaramos"
 PERSONAL_KEY="$HOME/.ssh/id_ed25519"
+PROFESSIONAL_KEY="$HOME/.ssh/id_ed25519_github_enterprise"
+PROFESSIONAL_EMAIL="ramon.ramos@podium.com"
 SSH_CONFIG="$HOME/.ssh/config"
 
 usage() {
   cat <<'USAGE'
 Usage:
-  ./install.sh [--dry-run] [--skip-gh-auth] [--skip-github-settings]
+  ./install.sh [--with-professional] [--dry-run] [--skip-gh-auth] [--skip-github-settings]
 
 Options:
+  --with-professional      Also prepare the professional SSH key.
   --dry-run                Print actions without changing files.
   --skip-gh-auth           Do not run GitHub CLI authentication.
   --skip-github-settings   Do not open GitHub SSH key settings.
@@ -23,9 +26,13 @@ USAGE
 DRY_RUN=0
 SKIP_GH_AUTH=0
 SKIP_GITHUB_SETTINGS=0
+WITH_PROFESSIONAL=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --with-professional)
+      WITH_PROFESSIONAL=1
+      ;;
     --dry-run)
       DRY_RUN=1
       ;;
@@ -72,6 +79,8 @@ find_brew() {
     print -r -- /usr/local/bin/brew
   elif command_exists brew; then
     command -v brew
+  else
+    return 1
   fi
 }
 
@@ -79,7 +88,11 @@ install_homebrew() {
   if find_brew >/dev/null; then
     return
   fi
-  run /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    log "would install Homebrew"
+    return 0
+  fi
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 }
 
 brew_install_if_missing() {
@@ -125,19 +138,36 @@ install_file() {
   log "wrote: $target"
 }
 
-ensure_personal_ssh_key() {
-  mkdir -p "$HOME/.ssh"
-  chmod 700 "$HOME/.ssh"
+ensure_ssh_key() {
+  local key="$1"
+  local email="$2"
+  run mkdir -p "$HOME/.ssh"
+  run chmod 700 "$HOME/.ssh"
 
-  if [[ -f "$PERSONAL_KEY" && -f "$PERSONAL_KEY.pub" ]]; then
-    log "ok: personal SSH key exists at $PERSONAL_KEY"
+  if [[ -f "$key" ]]; then
+    if [[ ! -f "$key.pub" ]]; then
+      if [[ "$DRY_RUN" -eq 1 ]]; then
+        log "would recover public key from: $key"
+      else
+        local public_key
+        public_key="$(ssh-keygen -y -f "$key")"
+        print -r -- "$public_key" > "$key.pub"
+        chmod 644 "$key.pub"
+      fi
+    fi
+    log "ok: SSH key exists at $key"
     return 0
   fi
 
-  run ssh-keygen -t ed25519 -C "$PERSONAL_EMAIL" -f "$PERSONAL_KEY" -N ""
+  if [[ -e "$key.pub" ]]; then
+    log "error: restore the private key for $key.pub before continuing" >&2
+    return 1
+  fi
+
+  run ssh-keygen -t ed25519 -C "$email" -f "$key" -N ""
   if [[ "$DRY_RUN" -eq 0 ]]; then
-    chmod 600 "$PERSONAL_KEY"
-    chmod 644 "$PERSONAL_KEY.pub"
+    chmod 600 "$key"
+    chmod 644 "$key.pub"
   fi
 }
 
@@ -204,22 +234,46 @@ Next steps:
    git config user.email
 4. Keep professional repos under ~/Developer/professional/, ~/Developer/podium/, or ~/Developer/podium-github/.
 STEPS
+  if [[ "$WITH_PROFESSIONAL" -eq 1 ]]; then
+    cat <<'STEPS'
+5. Sign into the professional GitHub account and add its public key:
+   pbcopy < ~/.ssh/id_ed25519_github_enterprise.pub
+   https://github.com/settings/ssh/new
+6. Authenticate GitHub CLI with that account (verify the browser account):
+   gh auth login --hostname github.com --git-protocol ssh --web
+   gh auth status --hostname github.com
+7. Test the professional key, authorizing organization SSO if required:
+   ssh -T git@github.com-professional
+STEPS
+  else
+    log "Professional access requires a separate key/account; rerun with --with-professional to prepare the key."
+  fi
 }
 
 main() {
   install_homebrew
   local brew
-  brew="$(find_brew)"
+  brew="$(find_brew)" || brew=""
 
   if [[ -n "$brew" ]]; then
+    if [[ "$DRY_RUN" -eq 0 ]]; then
+      eval "$("$brew" shellenv)"
+    fi
     brew_install_if_missing "$brew" git
     brew_install_if_missing "$brew" gh
     brew_install_if_missing "$brew" git-delta
   else
-    log "warning: Homebrew unavailable; skipping brew packages."
+    if [[ "$DRY_RUN" -eq 0 ]]; then
+      log "error: Homebrew unavailable after installation" >&2
+      return 1
+    fi
+    log "would install git, gh, and git-delta after Homebrew"
   fi
 
-  ensure_personal_ssh_key
+  ensure_ssh_key "$PERSONAL_KEY" "$PERSONAL_EMAIL"
+  if [[ "$WITH_PROFESSIONAL" -eq 1 ]]; then
+    ensure_ssh_key "$PROFESSIONAL_KEY" "$PROFESSIONAL_EMAIL"
+  fi
   install_git_configs
   install_ssh_config
   copy_public_key_to_clipboard
